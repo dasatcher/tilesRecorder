@@ -807,9 +807,13 @@ var Recorder = React.createClass({
 					React.createElement(
 						'div',
 						{ className: 'equalHW eq' },
-						React.createElement(
+						this.state.executing === false ? React.createElement(
 							'div',
 							{ type: 'button', onClick: this.startRecording.bind(this), value: 'Record', className: "record " + (this.state.recording ? "active" : "") },
+							' '
+						) : React.createElement(
+							'div',
+							{ type: 'button', value: 'Record', className: 'record dark' },
 							' '
 						)
 					),

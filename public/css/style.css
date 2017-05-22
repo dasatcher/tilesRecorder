@@ -31,6 +31,11 @@ ul {
   left: 10px;
   box-shadow: 0 0 1px 5px #FFF;
 }
+.record.dark {
+  
+  border: 40px solid #750b0b;
+ 
+}
 .record:before {
   content: '';
   position: absolute;

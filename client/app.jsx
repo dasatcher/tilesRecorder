@@ -692,7 +692,10 @@ this.setState({events:this.state.events});
 				        </div>
 					</div>
 					<div className="equalHW eq">
-							<div type="button" onClick={this.startRecording.bind(this)} value="Record" className={"record "+(this.state.recording ? "active":"")} > </div>   
+						{this.state.executing === false ? <div type="button" onClick={this.startRecording.bind(this)} value="Record" className={"record "+(this.state.recording ? "active":"")} > </div>   :
+						<div type="button" value="Record" className="record dark" > </div> 
+						}
+							
 					</div>
 					<div className="equalHW eq">
 						<input type="button" onClick={this.finishRecording.bind(this)} value="Finish" />
