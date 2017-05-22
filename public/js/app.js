@@ -197,7 +197,8 @@ var Executor = React.createClass({
 		return {
 			active: true,
 			eventList: events,
-			lastSuccessTime: null
+			lastSuccessTime: null,
+			currIndex: 0
 
 		};
 	},
@@ -234,6 +235,7 @@ var Executor = React.createClass({
 			}
 			if (success) {
 				console.log("success");
+				this.props.sendResultSignal(this.state.currIndex, "success");
 				if (this.state.eventList[0].options.executeSuccess) {
 					this.execute(this.state.eventList[0].options.executeSuccess);
 				}
@@ -242,9 +244,13 @@ var Executor = React.createClass({
 
 				console.log("events left length: " + currEventList.length);
 
-				currEventList.length > 0 ? this.setState({ eventList: currEventList, lastSuccessTime: eventReceived }) : this.terminate();
-			} else if (this.state.eventList[0].options.executeFail) {
-				this.execute(this.state.eventList[0].options.executeFail);
+				currEventList.length > 0 ? this.setState({ eventList: currEventList, lastSuccessTime: eventReceived, currIndex: this.state.currIndex + 1 }) : this.terminate();
+			} else {
+				if (this.state.eventList[0].options.executeFail) {
+					this.execute(this.state.eventList[0].options.executeFail);
+				}
+
+				this.props.sendResultSignal(this.state.currIndex, "fail");
 			}
 		}
 	},
@@ -272,19 +278,31 @@ var OptionsWindow = React.createClass({
 
 	getInitialState: function getInitialState() {
 		return {
-			resType: null,
-			param2: false
+			resType: "sTile",
+			param2: false,
+			editing: false
 		};
 	},
-	setResType: function setResType(e) {
-		this.setState({ resType: e.target.value });
-	},
+	setResType: function setResType(e) {},
 	setParam1: function setParam1(e) {
-		console.log(e.target.options[e.target.selectedIndex].dataset.has2param);
-		e.target.options[e.target.selectedIndex].dataset.has2param === "true" ? this.setState({ param2: true }) : this.setState({ param2: false });
+
+		console.log(event.target.value);
+		console.log(e.target.dataset.has2param);
+
+		e.target.dataset.has2param === "true" ? this.setState({ hasParam2: true, selectedParam1: e.target.value }) : this.setState({ hasParam2: false, selectedParam1: e.target.value });
+	},
+	setParam2: function setParam2(e) {
+
+		console.log(event.target.value);
+		console.log(e.target.dataset.has2param);
+
+		this.setState({ selectedParam2: e.target.value });
 	},
 	setDeviceSelect: function setDeviceSelect(e) {
 		this.setState({ deviceSelect: e.target.value });
+	},
+	setEditing: function setEditing() {
+		this.setState({ editing: !this.state.editing });
 	},
 	buildTileNames: function buildTileNames() {
 		return userTiles.map(function (tile) {
@@ -298,8 +316,8 @@ var OptionsWindow = React.createClass({
 	handleTileSubmit: function handleTileSubmit(e) {
 		e.preventDefault();
 		var option2;
-		if (this.state.deviceSelect === "led") option2 = e.target.option2.value;
-		var myResponse = new tileResponse(e.target.tileSelect.value, e.target.outputDevice.value, e.target.option1.value, option2);
+		if (this.state.selectedParam2) option2 = this.state.selectedParam2;
+		var myResponse = new tileResponse(e.target.tileSelect.value, e.target.outputDevice.value, this.state.selectedParam1, option2);
 		this.props.handleSubmit(myResponse);
 	},
 	buildForm: function buildForm() {
@@ -350,57 +368,76 @@ var OptionsWindow = React.createClass({
 					'div',
 					null,
 					React.createElement(
-						'select',
-						{ name: 'option1', onChange: this.setParam1 },
+						'div',
+						{ className: 'icon-container', onChange: this.setParam1 },
 						React.createElement(
-							'option',
-							{ 'data-has2param': 'false' },
-							'Choose Command'
+							'label',
+							null,
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'on', value: 'on', 'data-has2param': 'true' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495405319/led_on_mlg5df.png' })
+							)
 						),
 						React.createElement(
-							'option',
-							{ 'data-has2param': 'true' },
-							'on'
+							'label',
+							null,
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'off', value: 'off', 'data-has2param': 'false' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495405794/led_off_jpq2xd.png' })
+							)
 						),
 						React.createElement(
-							'option',
-							{ 'data-has2param': 'false' },
-							'off'
+							'label',
+							null,
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'blink', value: 'blink', 'data-has2param': 'true' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495405692/led_blink_b5qkhh.png' })
+							)
 						),
 						React.createElement(
-							'option',
-							{ 'data-has2param': 'true' },
-							'blink'
-						),
-						React.createElement(
-							'option',
-							{ 'data-has2param': 'true' },
-							'fade'
+							'label',
+							null,
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'fade', value: 'fade', 'data-has2param': 'true' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495405793/led_fade_ffxjvh.png' })
+							)
 						)
 					),
 					console.log("Just before option 2, param2 in state is " + this.state.param2),
-					this.state.param2 === true && React.createElement(
-						'select',
-						{ name: 'option2' },
+					this.state.hasParam2 === true && React.createElement(
+						'div',
+						{ className: 'color-container', onChange: this.setParam2 },
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'white'
+							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'white' }),
+							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "white" } })
 						),
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'red'
+							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'red' }),
+							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "red" } })
 						),
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'green'
+							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'blue' }),
+							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "blue" } })
 						),
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'blue'
+							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'green' }),
+							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "green" } })
 						)
 					)
 				),
@@ -408,17 +445,27 @@ var OptionsWindow = React.createClass({
 					'div',
 					null,
 					React.createElement(
-						'select',
-						{ name: 'option1' },
+						'div',
+						{ className: 'icon-container', onChange: this.setParam1 },
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'long'
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'long', value: 'long', 'data-has2param': 'false' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png' })
+							)
 						),
 						React.createElement(
-							'option',
+							'label',
 							null,
-							'burst'
+							React.createElement('input', { type: 'radio', name: 'task-icon', ref: 'burst', value: 'burst', 'data-has2param': 'false' }),
+							React.createElement(
+								'div',
+								{ className: 'img-container' },
+								React.createElement('img', { className: 'img-icon', src: 'http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png' })
+							)
 						)
 					)
 				),
@@ -429,22 +476,22 @@ var OptionsWindow = React.createClass({
 	render: function render() {
 		return React.createElement(
 			'div',
-			null,
+			{ className: "option-window " + (this.props.type === "success" ? "success" : "fail") },
 			React.createElement(
 				'select',
 				{ name: 'responseSelector', onChange: this.setResType },
-				React.createElement(
-					'option',
-					null,
-					'Choose Response'
-				),
 				React.createElement(
 					'option',
 					{ value: 'sTile' },
 					'Single Tile'
 				)
 			),
-			this.buildForm()
+			React.createElement(
+				'i',
+				{ className: 'material-icons edit', ref: 'editResponse', onClick: this.setEditing },
+				'mode_edit'
+			),
+			this.state.editing && this.buildForm()
 		);
 	}
 });
@@ -548,18 +595,65 @@ var Event = React.createClass({
 	setDeviceSelectFail: function setDeviceSelectFail(e) {
 		this.setState({ deviceSelectFail: e.target.value });
 	},
+	setInteractionClass: function setInteractionClass(type) {
+		if (type === "ta") {
+			return "tap";
+		} else if (type === "doubleta") {
+			return "double-tap";
+		} else {
+			return "tilt";
+		}
+	}, //{this.props.tileId}-{this.props.tileName}-{this.props.eventType}	
+	checkStatus: function checkStatus() {
+		if (this.props.status === "success") {
+			return "connect-success";
+		} else if (this.props.status === "fail") {
+			return "connect-fail";
+		}
+	},
 	render: function render() {
 		return React.createElement(
 			'li',
 			null,
-			this.props.tileId,
-			'-',
-			this.props.tileName,
-			'-',
-			this.props.eventType,
-			this.buildTimeSelector(),
-			React.createElement(OptionsWindow, { key: "success" + this.props.tileId, handleSubmit: this.handleSuccessSubmit }),
-			React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit })
+			React.createElement(
+				'div',
+				{ className: 'equalHWrap eqWrap' },
+				React.createElement(
+					'div',
+					{ className: 'equalHW eq ' },
+					React.createElement(
+						'div',
+						{ className: 'name-area' },
+						this.props.tileName
+					)
+				),
+				React.createElement(
+					'div',
+					{ className: "equalHW eq connect " + this.checkStatus() },
+					React.createElement(
+						'div',
+						{ className: "node offset-left " + this.setInteractionClass() },
+						this.props.eventType
+					)
+				),
+				React.createElement(
+					'div',
+					{ className: 'equalHW eq button-flex' },
+					React.createElement(
+						'div',
+						{ className: 'option-window-area' },
+						React.createElement(OptionsWindow, { key: "success" + this.props.tileId, handleSubmit: this.handleSuccessSubmit, type: 'success' }),
+						React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit, type: 'fail' })
+					)
+				)
+			),
+			React.createElement(
+				'div',
+				{ style: { display: "none" } },
+				this.buildTimeSelector(),
+				React.createElement(OptionsWindow, { key: "success" + this.props.tileId, handleSubmit: this.handleSuccessSubmit, type: 'success' }),
+				React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit, type: 'fail' })
+			)
 		);
 	}
 
@@ -585,14 +679,14 @@ var Recorder = React.createClass({
 		var _this2 = this;
 
 		return this.state.events.map(function (event, index) {
-			return React.createElement(Event, { key: index, propKey: index, tileId: event.tileId, tileName: event.name, eventType: event.type, updateEvent: _this2.updateEvent });
+			return React.createElement(Event, { key: index, propKey: index, tileId: event.tileId, tileName: event.name, eventType: event.type, updateEvent: _this2.updateEvent, status: event.status });
 		});
 	},
 	renderExecs: function renderExecs() {
 		var _this3 = this;
 
 		return this.state.execs.map(function (exec, index) {
-			return React.createElement(Executor, { eventList: _this3.state.events, key: index, name: exec.name });
+			return React.createElement(Executor, { eventList: _this3.state.events, key: index, name: exec.name, sendResultSignal: _this3.setEventStatus });
 		});
 	},
 	setSingleFilter: function setSingleFilter() {
@@ -614,12 +708,13 @@ var Recorder = React.createClass({
 		console.log(msg);
 		var tileEvent = msg.event;
 		var tileId = msg.tileId;
+		var eventType = tileEvent.properties[0] + tileEvent.properties[1];
 		if (this.state.recording) {
 			if (this.checkFilter(tileEvent)) this.addEvent(tileId, tileEvent);
 		}
 	},
 	checkFilter: function checkFilter(tileEvent) {
-		if (tileEvent.properties[0] === "ta" && this.state.singleAllowed || tileEvent.properties[0] === "doubleta" && this.state.doubleAllowed || tileEvent.properties[0] === "tile" && this.state.tiltAllowed) {
+		if (tileEvent.properties[0] === "ta" && this.state.singleAllowed || tileEvent.properties[0] === "doubleta" && this.state.doubleAllowed || tileEvent.properties[0] === "tilt" && this.state.tiltAllowed) {
 			return true;
 		} else return false;
 	},
@@ -632,29 +727,72 @@ var Recorder = React.createClass({
 		this.state.events[id].options = options;
 		this.setState({ events: this.state.events });
 	},
+	setEventStatus: function setEventStatus(index, status) {
+		this.state.events[index].status = status;
+		this.setState({ events: this.state.events });
+	},
 	render: function render() {
 		return React.createElement(
 			'div',
 			{ className: 'body-container' },
-			React.createElement('input', { type: 'button', onClick: this.startRecording.bind(this), value: 'Record' }),
-			React.createElement('input', { type: 'checkbox', onChange: this.setSingleFilter.bind(this), defaultChecked: 'checked' }),
-			' Single tap',
-			React.createElement('input', { type: 'checkbox', onChange: this.setDoubleFilter.bind(this), defaultChecked: 'checked' }),
-			' Double tap',
-			React.createElement('input', { type: 'checkbox', onChange: this.setTiltFilter.bind(this), defaultChecked: 'checked' }),
-			' Tilt',
-			React.createElement('input', { type: 'button', onClick: this.finishRecording.bind(this), value: 'Finish' }),
 			React.createElement(
-				'ul',
-				null,
-				this.renderEvents()
-			),
-			this.state.recording && React.createElement(
 				'div',
-				null,
-				'we cording y\'all'
+				{ className: 'record-area' },
+				React.createElement(
+					'div',
+					{ className: 'equalHWrap eqWrap' },
+					React.createElement(
+						'div',
+						{ className: 'equalHW eq' },
+						React.createElement(
+							'div',
+							{ className: 'filter-container' },
+							React.createElement(
+								'input',
+								{ type: 'checkbox', onChange: this.setSingleFilter.bind(this), defaultChecked: 'checked' },
+								' Single tap'
+							),
+							React.createElement('input', { type: 'checkbox', onChange: this.setDoubleFilter.bind(this), defaultChecked: 'checked' }),
+							' Double tap',
+							React.createElement('input', { type: 'checkbox', onChange: this.setTiltFilter.bind(this), defaultChecked: 'checked' }),
+							' Tilt'
+						)
+					),
+					React.createElement(
+						'div',
+						{ className: 'equalHW eq' },
+						React.createElement(
+							'div',
+							{ type: 'button', onClick: this.startRecording.bind(this), value: 'Record', className: "record " + (this.state.recording ? "active" : "") },
+							' '
+						)
+					),
+					React.createElement(
+						'div',
+						{ className: 'equalHW eq' },
+						React.createElement('input', { type: 'button', onClick: this.finishRecording.bind(this), value: 'Finish' })
+					)
+				)
 			),
-			this.renderExecs()
+			React.createElement(
+				'div',
+				{ className: 'rec-node float-right' },
+				React.createElement(
+					'ul',
+					null,
+					this.renderEvents()
+				),
+				this.state.recording && React.createElement(
+					'div',
+					null,
+					'we cording y\'all'
+				)
+			),
+			React.createElement(
+				'div',
+				{ className: 'exec-area' },
+				this.renderExecs()
+			)
 		);
 	}
 
