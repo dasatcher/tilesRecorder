@@ -171,7 +171,7 @@ var Executor = React.createClass({
 	getInitialState() {
 		var events = this.props.eventList.slice(0); //doing a shallow copy, never want to edit props directly
 		return {
-        active: true,
+       
 		eventList: events,
 		lastSuccessTime: null,
 		currIndex:0
@@ -187,7 +187,7 @@ var Executor = React.createClass({
 		console.log(this.state.eventList);
 		console.log(this.props.eventList);
 		
-		if(this.state.active){
+		if(this.props.active){
 			var tileEvent = msg.event;
 			var tileId = msg.tileId;
 			var eventReceived = moment().valueOf();
@@ -243,11 +243,20 @@ var Executor = React.createClass({
 		ex.execute();
 	},
 	terminate(){
-		this.setState({active:false, eventList:this.props.eventList, lastSuccessTime:null}); //reset our executor
+		this.props.resetEventStatuses();
+		this.props.stopExecuting();
+		this.setState({eventList:this.props.eventList.slice(0), lastSuccessTime:null, currIndex:0}); //reset our executor
 	},
 	render(){
 		return (
-		<div>Hi i'm a listener/executor with a name {this.props.name}</div>
+			
+		<div>
+			{this.props.active && 
+			<input type="button" value="reset" onClick={this.terminate} />
+			
+			}
+
+		</div>
 		)
 	}
 });
@@ -282,16 +291,21 @@ var OptionsWindow = React.createClass(
 		},
 		setDeviceSelect(e){
 		this.setState({deviceSelect: e.target.value});
-	},
-	setEditing(){
-		this.setState({editing:!this.state.editing});
-	},
-			buildTileNames(){
-		return userTiles.map( (tile) =>
-		<option value={tile.id}>{tile.name}</option>
+		},
+		setEditing(){
+			this.setState({editing:!this.state.editing});
+		},
+		resetResponses(){
+			this.props.handleSubmit(null);
+			this.setState({selectedParam1:null, selectedParam2:null,deviceSelect:null,editing:false,param2:false});
 
-		);
-	},
+		},
+		buildTileNames(){
+			return userTiles.map( (tile) =>
+			<option value={tile.id}>{tile.name}</option>
+
+			);
+		},
 		handleTileSubmit(e){
 			e.preventDefault();
 			var option2;
@@ -316,9 +330,10 @@ var OptionsWindow = React.createClass(
 							<option value="led">led</option>
 							<option value="haptic">haptic</option>
 						</select>
-						<label name="commands">Command</label>
+						
 						{this.state.deviceSelect === "led" &&
 						<div>
+							<label name="commands">Command</label>
 							<div className="icon-container" onChange={this.setParam1}>
 								<label  >
         						<input type="radio" name="task-icon" ref="on" value="on" data-has2param="true"   />
@@ -349,7 +364,8 @@ var OptionsWindow = React.createClass(
 						
 						{console.log("Just before option 2, param2 in state is "+this.state.param2)}
 						{this.state.hasParam2  === true &&
-						
+						<div>
+						<label name="commands">Command</label>
 							<div className="color-container" onChange={this.setParam2}>
 								<label >
 								<input type="radio" name="profile-color" ref="color1" value="white"  />
@@ -377,7 +393,7 @@ var OptionsWindow = React.createClass(
 								</label>
               				</div>
 
-
+							  </div>
 
 
 						
@@ -406,7 +422,10 @@ var OptionsWindow = React.createClass(
 							</div>						
 					</div>
 						}
+						<div className="submit-area">
 						<input type="submit" value="Save" />
+						<input type="button" value="Delete" onClick={this.resetResponses}/>
+						</div>
 					</form>
 				)
 			}
@@ -414,6 +433,7 @@ var OptionsWindow = React.createClass(
 		render(){
 			return (
 			<div className={"option-window "+(this.props.type === "success" ? "success":"fail")}>
+				<div>{this.props.type === "success" ? "On Success":"On Fail"}</div>
 				<select name="responseSelector" onChange={this.setResType}>
 					
 					<option value="sTile">Single Tile</option>
@@ -484,6 +504,7 @@ var Event = React.createClass({
 	},
 	buildTimeSelector(){
 		return (
+			<div className="option-window time">
 			<form name="setTime" onSubmit={this.handleTimeSubmit}>
 			<label>Set event time window</label>
 						<select name="timeSelector">
@@ -494,6 +515,7 @@ var Event = React.createClass({
 						
 						<input type="submit" value="save" />
 						</form>
+			</div>
 		);
 	},
 	buildTileNames(){
@@ -545,12 +567,13 @@ var Event = React.createClass({
 						<div className="option-window-area">
 							<OptionsWindow key={"success"+this.props.tileId} handleSubmit={this.handleSuccessSubmit} type="success"/>
 						<OptionsWindow key={"fail"+this.props.tileId} handleSubmit={this.handleFailSubmit} type="fail"/>
+						{this.buildTimeSelector()}
 						</div>
 							
 						</div>	
 					</div>
 					<div style={{display:"none"}}>
-						{this.buildTimeSelector()}
+						
 						<OptionsWindow key={"success"+this.props.tileId} handleSubmit={this.handleSuccessSubmit} type="success"/>
 						<OptionsWindow key={"fail"+this.props.tileId} handleSubmit={this.handleFailSubmit} type="fail"/>
 						</div>
@@ -568,7 +591,8 @@ var Recorder = React.createClass({
         doubleAllowed: true,
         tiltAllowed: true,
         events: [],
-		execs: []       
+		execs: [],
+		executing:false      
     }
 	},
 
@@ -583,7 +607,7 @@ var Recorder = React.createClass({
   },
   renderExecs(){
 			return this.state.execs.map((exec, index) => (
-        <Executor eventList={this.state.events} key={index} name={exec.name} sendResultSignal={this.setEventStatus} />
+        <Executor eventList={this.state.events} key={index} name={exec.name} sendResultSignal={this.setEventStatus} resetEventStatuses={this.resetEventStatuses} active={this.state.executing} stopExecuting={this.stopExecuting}/>
       ));
   },
   setSingleFilter(){   
@@ -598,8 +622,20 @@ setTiltFilter(){
 startRecording(e){
 this.state.recording ? this.setState({recording:false}) : this.setState({recording:true});
 },
+stopExecuting(){
+	
+	this.setState({executing:false});
+},
 finishRecording(){
-	this.setState({execs: this.state.execs.concat({name:"test"}), recording:false});
+	this.resetEventStatuses();
+	if(!this.state.execs.length){
+	this.setState({execs: this.state.execs.concat({name:"test"}), recording:false, executing:true});
+	
+}
+else{
+	this.setState({ recording:false, executing:true});
+}
+
 },
 receiveEvent(msg){
     console.log(msg);
@@ -632,6 +668,14 @@ setEventStatus(index,status){
 this.state.events[index].status = status;
 this.setState({events:this.state.events});
 },
+resetEventStatuses(){
+for(var i =0; i<this.state.events.length;i++){
+	if(this.state.events[i].status){
+		this.state.events[i].status = null;
+	}
+}
+this.setState({events:this.state.events});
+},
 	render(){
       return (
       <div className="body-container">
@@ -652,6 +696,9 @@ this.setState({events:this.state.events});
 					</div>
 					<div className="equalHW eq">
 						<input type="button" onClick={this.finishRecording.bind(this)} value="Finish" />
+						<div className="exec-area">
+					{this.renderExecs()}
+			</div>
 					</div>
 				</div>  
 			</div>
@@ -662,9 +709,7 @@ this.setState({events:this.state.events});
 					
 					{this.state.recording && <div>we cording y'all</div>}
 			</div>
-			<div className="exec-area">
-					{this.renderExecs()}
-			</div>
+			
       </div>
       );
   }

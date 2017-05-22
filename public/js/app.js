@@ -195,7 +195,7 @@ var Executor = React.createClass({
 	getInitialState: function getInitialState() {
 		var events = this.props.eventList.slice(0); //doing a shallow copy, never want to edit props directly
 		return {
-			active: true,
+
 			eventList: events,
 			lastSuccessTime: null,
 			currIndex: 0
@@ -210,7 +210,7 @@ var Executor = React.createClass({
 		console.log(this.state.eventList);
 		console.log(this.props.eventList);
 
-		if (this.state.active) {
+		if (this.props.active) {
 			var tileEvent = msg.event;
 			var tileId = msg.tileId;
 			var eventReceived = moment().valueOf();
@@ -261,14 +261,15 @@ var Executor = React.createClass({
 		ex.execute();
 	},
 	terminate: function terminate() {
-		this.setState({ active: false, eventList: this.props.eventList, lastSuccessTime: null }); //reset our executor
+		this.props.resetEventStatuses();
+		this.props.stopExecuting();
+		this.setState({ eventList: this.props.eventList.slice(0), lastSuccessTime: null, currIndex: 0 }); //reset our executor
 	},
 	render: function render() {
 		return React.createElement(
 			'div',
 			null,
-			'Hi i\'m a listener/executor with a name ',
-			this.props.name
+			this.props.active && React.createElement('input', { type: 'button', value: 'reset', onClick: this.terminate })
 		);
 	}
 });
@@ -303,6 +304,10 @@ var OptionsWindow = React.createClass({
 	},
 	setEditing: function setEditing() {
 		this.setState({ editing: !this.state.editing });
+	},
+	resetResponses: function resetResponses() {
+		this.props.handleSubmit(null);
+		this.setState({ selectedParam1: null, selectedParam2: null, deviceSelect: null, editing: false, param2: false });
 	},
 	buildTileNames: function buildTileNames() {
 		return userTiles.map(function (tile) {
@@ -359,14 +364,14 @@ var OptionsWindow = React.createClass({
 						'haptic'
 					)
 				),
-				React.createElement(
-					'label',
-					{ name: 'commands' },
-					'Command'
-				),
 				this.state.deviceSelect === "led" && React.createElement(
 					'div',
 					null,
+					React.createElement(
+						'label',
+						{ name: 'commands' },
+						'Command'
+					),
 					React.createElement(
 						'div',
 						{ className: 'icon-container', onChange: this.setParam1 },
@@ -414,30 +419,39 @@ var OptionsWindow = React.createClass({
 					console.log("Just before option 2, param2 in state is " + this.state.param2),
 					this.state.hasParam2 === true && React.createElement(
 						'div',
-						{ className: 'color-container', onChange: this.setParam2 },
+						null,
 						React.createElement(
 							'label',
-							null,
-							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'white' }),
-							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "white" } })
+							{ name: 'commands' },
+							'Command'
 						),
 						React.createElement(
-							'label',
-							null,
-							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'red' }),
-							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "red" } })
-						),
-						React.createElement(
-							'label',
-							null,
-							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'blue' }),
-							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "blue" } })
-						),
-						React.createElement(
-							'label',
-							null,
-							React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'green' }),
-							React.createElement('div', { className: 'color-circle', style: { backgroundColor: "green" } })
+							'div',
+							{ className: 'color-container', onChange: this.setParam2 },
+							React.createElement(
+								'label',
+								null,
+								React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'white' }),
+								React.createElement('div', { className: 'color-circle', style: { backgroundColor: "white" } })
+							),
+							React.createElement(
+								'label',
+								null,
+								React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'red' }),
+								React.createElement('div', { className: 'color-circle', style: { backgroundColor: "red" } })
+							),
+							React.createElement(
+								'label',
+								null,
+								React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'blue' }),
+								React.createElement('div', { className: 'color-circle', style: { backgroundColor: "blue" } })
+							),
+							React.createElement(
+								'label',
+								null,
+								React.createElement('input', { type: 'radio', name: 'profile-color', ref: 'color1', value: 'green' }),
+								React.createElement('div', { className: 'color-circle', style: { backgroundColor: "green" } })
+							)
 						)
 					)
 				),
@@ -469,7 +483,12 @@ var OptionsWindow = React.createClass({
 						)
 					)
 				),
-				React.createElement('input', { type: 'submit', value: 'Save' })
+				React.createElement(
+					'div',
+					{ className: 'submit-area' },
+					React.createElement('input', { type: 'submit', value: 'Save' }),
+					React.createElement('input', { type: 'button', value: 'Delete', onClick: this.resetResponses })
+				)
 			);
 		}
 	},
@@ -477,6 +496,11 @@ var OptionsWindow = React.createClass({
 		return React.createElement(
 			'div',
 			{ className: "option-window " + (this.props.type === "success" ? "success" : "fail") },
+			React.createElement(
+				'div',
+				null,
+				this.props.type === "success" ? "On Success" : "On Fail"
+			),
 			React.createElement(
 				'select',
 				{ name: 'responseSelector', onChange: this.setResType },
@@ -552,29 +576,33 @@ var Event = React.createClass({
 	},
 	buildTimeSelector: function buildTimeSelector() {
 		return React.createElement(
-			'form',
-			{ name: 'setTime', onSubmit: this.handleTimeSubmit },
+			'div',
+			{ className: 'option-window time' },
 			React.createElement(
-				'label',
-				null,
-				'Set event time window'
-			),
-			React.createElement(
-				'select',
-				{ name: 'timeSelector' },
-				this.renderTimeUnits()
-			),
-			React.createElement(
-				'input',
-				{ type: 'radio', name: 'unit', defaultChecked: 'true', value: 'false', onChange: this.setTimeScale },
-				'Seconds'
-			),
-			React.createElement(
-				'input',
-				{ type: 'radio', name: 'unit', value: 'true', onChange: this.setTimeScale },
-				'Minutes'
-			),
-			React.createElement('input', { type: 'submit', value: 'save' })
+				'form',
+				{ name: 'setTime', onSubmit: this.handleTimeSubmit },
+				React.createElement(
+					'label',
+					null,
+					'Set event time window'
+				),
+				React.createElement(
+					'select',
+					{ name: 'timeSelector' },
+					this.renderTimeUnits()
+				),
+				React.createElement(
+					'input',
+					{ type: 'radio', name: 'unit', defaultChecked: 'true', value: 'false', onChange: this.setTimeScale },
+					'Seconds'
+				),
+				React.createElement(
+					'input',
+					{ type: 'radio', name: 'unit', value: 'true', onChange: this.setTimeScale },
+					'Minutes'
+				),
+				React.createElement('input', { type: 'submit', value: 'save' })
+			)
 		);
 	},
 	buildTileNames: function buildTileNames() {
@@ -643,14 +671,14 @@ var Event = React.createClass({
 						'div',
 						{ className: 'option-window-area' },
 						React.createElement(OptionsWindow, { key: "success" + this.props.tileId, handleSubmit: this.handleSuccessSubmit, type: 'success' }),
-						React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit, type: 'fail' })
+						React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit, type: 'fail' }),
+						this.buildTimeSelector()
 					)
 				)
 			),
 			React.createElement(
 				'div',
 				{ style: { display: "none" } },
-				this.buildTimeSelector(),
 				React.createElement(OptionsWindow, { key: "success" + this.props.tileId, handleSubmit: this.handleSuccessSubmit, type: 'success' }),
 				React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit, type: 'fail' })
 			)
@@ -668,7 +696,8 @@ var Recorder = React.createClass({
 			doubleAllowed: true,
 			tiltAllowed: true,
 			events: [],
-			execs: []
+			execs: [],
+			executing: false
 		};
 	},
 
@@ -686,7 +715,7 @@ var Recorder = React.createClass({
 		var _this3 = this;
 
 		return this.state.execs.map(function (exec, index) {
-			return React.createElement(Executor, { eventList: _this3.state.events, key: index, name: exec.name, sendResultSignal: _this3.setEventStatus });
+			return React.createElement(Executor, { eventList: _this3.state.events, key: index, name: exec.name, sendResultSignal: _this3.setEventStatus, resetEventStatuses: _this3.resetEventStatuses, active: _this3.state.executing, stopExecuting: _this3.stopExecuting });
 		});
 	},
 	setSingleFilter: function setSingleFilter() {
@@ -701,8 +730,17 @@ var Recorder = React.createClass({
 	startRecording: function startRecording(e) {
 		this.state.recording ? this.setState({ recording: false }) : this.setState({ recording: true });
 	},
+	stopExecuting: function stopExecuting() {
+
+		this.setState({ executing: false });
+	},
 	finishRecording: function finishRecording() {
-		this.setState({ execs: this.state.execs.concat({ name: "test" }), recording: false });
+		this.resetEventStatuses();
+		if (!this.state.execs.length) {
+			this.setState({ execs: this.state.execs.concat({ name: "test" }), recording: false, executing: true });
+		} else {
+			this.setState({ recording: false, executing: true });
+		}
 	},
 	receiveEvent: function receiveEvent(msg) {
 		console.log(msg);
@@ -729,6 +767,14 @@ var Recorder = React.createClass({
 	},
 	setEventStatus: function setEventStatus(index, status) {
 		this.state.events[index].status = status;
+		this.setState({ events: this.state.events });
+	},
+	resetEventStatuses: function resetEventStatuses() {
+		for (var i = 0; i < this.state.events.length; i++) {
+			if (this.state.events[i].status) {
+				this.state.events[i].status = null;
+			}
+		}
 		this.setState({ events: this.state.events });
 	},
 	render: function render() {
@@ -770,7 +816,12 @@ var Recorder = React.createClass({
 					React.createElement(
 						'div',
 						{ className: 'equalHW eq' },
-						React.createElement('input', { type: 'button', onClick: this.finishRecording.bind(this), value: 'Finish' })
+						React.createElement('input', { type: 'button', onClick: this.finishRecording.bind(this), value: 'Finish' }),
+						React.createElement(
+							'div',
+							{ className: 'exec-area' },
+							this.renderExecs()
+						)
 					)
 				)
 			),
@@ -787,11 +838,6 @@ var Recorder = React.createClass({
 					null,
 					'we cording y\'all'
 				)
-			),
-			React.createElement(
-				'div',
-				{ className: 'exec-area' },
-				this.renderExecs()
 			)
 		);
 	}

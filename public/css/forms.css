@@ -102,6 +102,7 @@ margin-top:-50px;
 border: 1px solid transparent;
 border-radius: 8px;
 overflow: hidden;
+
 }
 .option-window{
   padding:10px;
@@ -110,8 +111,15 @@ overflow: hidden;
   width:300px;
   text-align:center;
 }
-
+.option-window.time{
+  width:200px;
+  background-color:#1DA1F2;
+}
 .material-icons.edit{
     margin-left:5px;
     cursor:pointer;
+}
+
+.submit-area{
+    margin-top:5px;
 }
