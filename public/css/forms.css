@@ -95,6 +95,12 @@ form{
 .fail{
   background-color:#eb446e;
 }
+.closed{
+  display: none;
+}
+.open{
+  display: inherit;
+}
 .option-window-area{
 position:absolute;
 right:30%;
@@ -111,10 +117,20 @@ overflow: hidden;
   width:300px;
   text-align:center;
 }
+.modal {
+  max-height: calc(100% - 100px);
+  position: fixed;
+    top: 50%;
+    left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .option-window.time{
   width:200px;
   background-color:#1DA1F2;
 }
+
+
 .material-icons.edit{
     margin-left:5px;
     cursor:pointer;
@@ -122,4 +138,14 @@ overflow: hidden;
 
 .submit-area{
     margin-top:5px;
+}
+
+.round{
+  border-radius:50%;
+  display:inline;
+
+}
+.editing-buttons{
+  display:inline-block;
+  float:left;
 }

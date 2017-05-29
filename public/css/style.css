@@ -119,3 +119,33 @@ ul {
 .rec-node{
 	padding-top:105px;
 }
+
+.activate-btn {
+  -webkit-border-radius: 12;
+  -moz-border-radius: 12;
+  border-radius: 12px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 20px;
+  background: #2C3E50;
+  padding: 10px 20px 10px 20px;
+  border: solid #F9F9F9 2px;
+  text-decoration: none;
+  width:70px;
+  height:20px;
+  margin-bottom:-60px;
+}
+
+.activate-btn:hover {
+  background: #415c77;
+  text-decoration: none;
+}
+
+.hidden{
+  visibility: hidden
+}
+
+.material-icons{
+  cursor:pointer;
+  margin-top:-2px;
+}

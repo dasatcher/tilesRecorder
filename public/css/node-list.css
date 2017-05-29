@@ -92,8 +92,8 @@ li {
 .button-flex {
   margin-left: -40%;
   text-align: left;
-  visibility: hidden;
-  opacity: 0;
+  visibility: visible;
+  opacity: 1;
   transition: visibility 0s, opacity 0.2s linear;
 }
 

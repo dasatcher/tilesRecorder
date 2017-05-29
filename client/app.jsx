@@ -169,66 +169,72 @@ var tileResponse = function(tileId, cmdString,param1,param2){
 
 var Executor = React.createClass({
 	getInitialState() {
-		var events = this.props.eventList.slice(0); //doing a shallow copy, never want to edit props directly
-		return {
-       
-		eventList: events,
-		lastSuccessTime: null,
-		currIndex:0
 		
-              
+		return {
+		lastSuccessTime: null,
     }
 	},
 	componentDidMount() {
 		execSoc.on('tileEvent', this.evaluate);
 	},
+	componentWillReceiveProps(nextProps){
+		console.log("next props "+nextProps);
+		console.log("current props "+this.props);
+	},
 	evaluate(msg){
-		console.log("in evaluate, here is curr event in event list");
-		console.log(this.state.eventList);
-		console.log(this.props.eventList);
-		
-		if(this.props.active){
+		console.log("in evaluate, here is curr index"+this.props.currIndex);
+		console.log("isExecuting (executor) "+this.props.executing);
+		var currIndex = this.props.currIndex;
+		if(this.props.executing === true){
 			var tileEvent = msg.event;
 			var tileId = msg.tileId;
-			var eventReceived = moment().valueOf();
-			var currEventList = this.state.eventList;
+			var eventReceived = moment().valueOf();			
+			var currEvent = this.props.eventList[this.props.currIndex];
+
 			console.log("event tileId: "+tileId+" event type: "+tileEvent.properties[0]);
 			console.log("lastSuccessTime: "+this.state.lastSuccessTime+" eventReceived: "+eventReceived);
 			var success = false;
-			if(this.state.eventList[0].tileId === tileId && this.state.eventList[0].type === tileEvent.properties[0]){
+			if(currEvent.tileId === tileId && currEvent.type === tileEvent.properties[0]){
 				success = true;
 				
 				console.log("event in event list matches event that came in");
-				if(this.state.eventList[0].options.timeLimit && this.state.lastSuccessTime){
+				if(currEvent.options.timeLimit && this.state.lastSuccessTime){
 					console.log("inside time check");
-					console.log("time limite "+this.state.eventList[0].options.timeLimit);
+					console.log("time limite "+this.props.eventList[0].options.timeLimit);
 					
-					if(this.state.eventList[0].options.timeLimit < (eventReceived - this.state.lastSuccessTime)) {
+					if(currEvent.options.timeLimit < (eventReceived - this.state.lastSuccessTime)) {
 					console.log("time fail");
 					success= false;
-					if(this.state.eventList[0].options.terminTime) this.terminate();
+					if(currEvent.options.terminTime) this.terminate();
 					}
 				}	
 		}
 		if(success){
 					console.log("success");
-					this.props.sendResultSignal(this.state.currIndex,"success");
-				if(this.state.eventList[0].options.executeSuccess){
-					this.execute(this.state.eventList[0].options.executeSuccess);
+					this.props.sendResultSignal(this.props.currIndex,"success");
+				if(currEvent.options.executeSuccess){
+					this.execute(currEvent.options.executeSuccess);
 				}
-				//remove event from list
-				currEventList.shift();
 				
-				console.log("events left length: "+currEventList.length)
 				
-				currEventList.length > 0 ? this.setState({eventList: currEventList, lastSuccessTime: eventReceived, currIndex: this.state.currIndex+1 }) : this.terminate();
+				
+				this.props.eventList.length !== this.props.currIndex ? this.setState({lastSuccessTime: eventReceived }) : this.terminate();
+			/*	if(this.props.eventList.length !== this.props.currIndex){
+						this.setState({lastSuccessTime: eventReceived });
+				}
+				else{
+						this.props.resetEventStatuses();
+						this.setState({lastSuccessTime:null}); //reset our executor
+				}*/
+				  
+				
 			}
 		else {
-			if(this.state.eventList[0].options.executeFail){
-			this.execute(this.state.eventList[0].options.executeFail);
+			if(currEvent.options.executeFail){
+			this.execute(currEvent.options.executeFail);
 		}
 		
-			this.props.sendResultSignal(this.state.currIndex,"fail")
+			this.props.sendResultSignal(this.props.currIndex,"fail")
 		}
 		
 		
@@ -238,26 +244,24 @@ var Executor = React.createClass({
 	},
 	execute(ex){
 		console.log("sequence completed!");
-		//var tileB = new tileResponse("F6:AB:53:52:53:84","led","on","red");
-		//tileB.execute();
+		
 		ex.execute();
 	},
 	terminate(){
 		this.props.resetEventStatuses();
-		this.props.stopExecuting();
-		this.setState({eventList:this.props.eventList.slice(0), lastSuccessTime:null, currIndex:0}); //reset our executor
+		this.setState({lastSuccessTime:null}); //reset our executor
 	},
 	render(){
 		return (
 			
-		<div>
-			{this.props.active && 
-			<input type="button" value="reset" onClick={this.terminate} />
+		<div >
+			{this.props.executing && 
+			<div className="activate-btn" value="reset" onClick={this.terminate} >Reset </div>
 			
 			}
-
-		</div>
+			</div>
 		)
+		
 	}
 });
 
@@ -292,6 +296,9 @@ var OptionsWindow = React.createClass(
 		setDeviceSelect(e){
 		this.setState({deviceSelect: e.target.value});
 		},
+		setTileId(e){
+		this.setState({selectedTileId:e.target.value})
+		},
 		setEditing(){
 			this.setState({editing:!this.state.editing});
 		},
@@ -302,7 +309,7 @@ var OptionsWindow = React.createClass(
 		},
 		buildTileNames(){
 			return userTiles.map( (tile) =>
-			<option value={tile.id}>{tile.name}</option>
+			<option value={tile.id} selected={this.state.selectedTileId === tile.id ? true : false}>{tile.name}</option>
 
 			);
 		},
@@ -312,91 +319,104 @@ var OptionsWindow = React.createClass(
 			if(this.state.selectedParam2) option2 = this.state.selectedParam2;
 			var myResponse = new tileResponse(e.target.tileSelect.value,e.target.outputDevice.value,this.state.selectedParam1,option2);
 			this.props.handleSubmit(myResponse);
+			this.setEditing();
+		},
+		copyFromPrevious(){
+			var previousExec = this.props.getPreviousExecution(this.props.type);
+			console.log(previousExec);
+			if(previousExec && previousExec !== "error"){
+
+				var param2 = previousExec.cmdString === "led" ? true:false;
+				this.setState({selectedTileId: previousExec.tileId, deviceSelect:previousExec.cmdString, selectedParam1:previousExec.param1, selectedParam2:previousExec.param2, hasParam2:param2 });
+			}
+			else{
+				return console.log("error");
+			}
+
+		},
+		buildDeviceSelect(){
+			var devices = ["led","haptic"];
+			return devices.map((device) =>
+			<option value={device} selected={this.state.deviceSelect === device ? true:false}>{device}</option>
+			
+			);
+		},
+		buildLedCommands(){
+			var commands = [
+				{cmd:"on", icon:"http://res.cloudinary.com/deeron/image/upload/v1495405319/led_on_mlg5df.png", has2param:"true"},
+				{cmd:"off",icon:"http://res.cloudinary.com/deeron/image/upload/v1495405794/led_off_jpq2xd.png", has2param:"false"},
+				{cmd:"blink",icon:"http://res.cloudinary.com/deeron/image/upload/v1495405692/led_blink_b5qkhh.png", has2param:"true" },
+				{cmd:"fade",icon:"http://res.cloudinary.com/deeron/image/upload/v1495405793/led_fade_ffxjvh.png", has2param:"true"}
+			];
+			return commands.map((command)=>
+				<label>
+					<input type="radio" name="task-icon" ref={command.cmd} value={command.cmd} data-has2param={command.has2param}  checked={this.state.selectedParam1 === command.cmd ? true:false} />
+					<div className="img-container" >
+						<img className="img-icon" src={command.icon} />
+					</div>
+      			</label>
+			);
+		},
+		buildHapticCommands(){
+			var commands = [
+				{cmd:"long",icon:"http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png",has2param:"false"},
+				{cmd:"burst",icon:"http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png",has2param:"false"}
+			];
+			return commands.map((command)=>
+				<label>
+					<input type="radio" name="task-icon" ref={command.cmd} value={command.cmd} data-has2param={command.has2param}  checked={this.state.selectedParam1 === command.cmd ? true:false} />
+					<div className="img-container" >
+						<img className="img-icon" src={command.icon} />
+					</div>
+      			</label>
+			);
+		},
+		buildParam2(){
+			var colors = ["white","red","blue","green"];
+			return colors.map((color)=>
+				<label >
+					<input type="radio" name="profile-color" ref={color} value={color} checked={this.state.selectedParam2 === color ? true:false}/>
+					<div className="color-circle" style={{backgroundColor:color}} >
+
+					</div>
+			    </label>
+			);
+
 		},
 		buildForm(){
 			if(this.state.resType === "sTile"){
 				return (
 					<form name="tileResponse" onSubmit={this.handleTileSubmit}>
 						<label>Tile Name </label>
-						<select name="tileSelect">
+						<select name="tileSelect" onChange={this.setTileId}>
 							{
 								this.buildTileNames()
 							}
 						</select>
 						
 						<label>Output Device</label>
-						<select name="outputDevice" onChange={this.setDeviceSelect}>
+						<select name="outputDevice" onChange={this.setDeviceSelect} >
 							<option >Choose Output</option>
-							<option value="led">led</option>
-							<option value="haptic">haptic</option>
+							{this.buildDeviceSelect()}
 						</select>
 						
 						{this.state.deviceSelect === "led" &&
 						<div>
 							<label name="commands">Command</label>
 							<div className="icon-container" onChange={this.setParam1}>
-								<label  >
-        						<input type="radio" name="task-icon" ref="on" value="on" data-has2param="true"   />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495405319/led_on_mlg5df.png" />
-       							 </div>
-      							</label>
-								  <label  >
-        						<input type="radio" name="task-icon" ref="off" value="off" data-has2param="false"  />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495405794/led_off_jpq2xd.png" />
-       							 </div>
-      							</label>
-								  <label  >
-        						<input type="radio" name="task-icon" ref="blink" value="blink" data-has2param="true"  />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495405692/led_blink_b5qkhh.png" />
-       							 </div>
-      							</label>
-								  <label  >
-        						<input type="radio" name="task-icon" ref="fade" value="fade" data-has2param="true"  />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495405793/led_fade_ffxjvh.png" />
-       							 </div>
-      							</label>
+								{this.buildLedCommands()}
 								
 							</div>
 						
-						{console.log("Just before option 2, param2 in state is "+this.state.param2)}
+						
 						{this.state.hasParam2  === true &&
 						<div>
 						<label name="commands">Command</label>
 							<div className="color-container" onChange={this.setParam2}>
-								<label >
-								<input type="radio" name="profile-color" ref="color1" value="white"  />
-								<div className="color-circle" style={{backgroundColor:"white"}} >
-
-								</div>
-								</label>
-									<label >
-								<input type="radio" name="profile-color" ref="color1" value="red"  />
-								<div className="color-circle" style={{backgroundColor:"red"}} >
-
-								</div>
-								</label>
-									<label >
-								<input type="radio" name="profile-color" ref="color1" value="blue"  />
-								<div className="color-circle" style={{backgroundColor:"blue"}} >
-
-								</div>
-								</label>
-									<label >
-								<input type="radio" name="profile-color" ref="color1" value="green"  />
-								<div className="color-circle" style={{backgroundColor:"green"}} >
-
-								</div>
-								</label>
+								{this.buildParam2()}
               				</div>
 
 							  </div>
-
-
-						
 						
 						}
 						
@@ -405,18 +425,7 @@ var OptionsWindow = React.createClass(
 						{this.state.deviceSelect === "haptic" &&
 					<div>
 						<div className="icon-container" onChange={this.setParam1}>
-								<label  >
-        						<input type="radio" name="task-icon" ref="long" value="long" data-has2param="false"  />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png" />
-       							 </div>
-      							</label>
-								  <label  >
-        						<input type="radio" name="task-icon" ref="burst" value="burst" data-has2param="false"  />
-        						<div className="img-container" >
-         						 <img className="img-icon" src="http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png" />
-       							 </div>
-      							</label>
+								{this.buildHapticCommands()}
 								  
 								
 							</div>						
@@ -432,16 +441,23 @@ var OptionsWindow = React.createClass(
 		},
 		render(){
 			return (
-			<div className={"option-window "+(this.props.type === "success" ? "success":"fail")}>
-				<div>{this.props.type === "success" ? "On Success":"On Fail"}</div>
-				<select name="responseSelector" onChange={this.setResType}>
-					
-					<option value="sTile">Single Tile</option>
-				</select>
-				<i className="material-icons edit" ref="editResponse" onClick={this.setEditing}>mode_edit</i>
-				{this.state.editing &&
-				this.buildForm()
-				}
+				<div>
+					<div className={"editing-buttons "+(this.state.editing ? "closed":"open")}>
+						<i className={"material-icons round "+(this.props.type === "success" ? " success" : " fail")} onClick={this.setEditing} >mode_edit</i> {this.props.type}
+					</div>
+				<div className={"option-window modal "+(this.props.type === "success" ? " success":" fail")+(this.state.editing ? " open" : " closed")}>
+				
+					<div>{this.props.type === "success" ? "On Success":"On Fail"}</div>
+					<select name="responseSelector" onChange={this.setResType}>
+						
+						<option value="sTile">Single Tile</option>
+					</select>
+					<i className="material-icons edit" ref="editResponse" onClick={this.copyFromPrevious}>mode_edit</i>
+					{this.state.editing &&
+					this.buildForm()
+					}
+				
+				</div>
 			</div>
 			
 			);
@@ -471,6 +487,17 @@ var Event = React.createClass({
 		}
 		
 		return days;
+	},
+	getPreviousEventExecution(type){
+		if(this.props.propKey !== 0){
+			var previous = this.props.getPreviousEvent(this.props.propKey);
+			if(previous.options){
+				return type === "success" ? previous.options.executeSuccess : previous.options.executeFail;
+			}
+	}
+	else{
+		return "error";
+	}
 	},
 	setTimeScale(e){
 		
@@ -553,30 +580,33 @@ var Event = React.createClass({
 		}
 		
 	},
+	deleteEvent(){
+		this.props.deleteEvent(this.props.propKey);
+	},
 	render(){
 		return (
 				<li>
 					<div className="equalHWrap eqWrap">
 						<div className="equalHW eq ">
-							<div className="name-area">{this.props.tileName}</div>
+							<div className="name-area"><span onClick={this.deleteEvent}><i className="material-icons">delete</i></span> {this.props.tileName}</div>
 						</div>
 						<div className={"equalHW eq connect "+this.checkStatus()}>
 							<div className={"node offset-left "+this.setInteractionClass()}>{this.props.eventType}</div>
 						</div>
 						<div className="equalHW eq button-flex">
-						<div className="option-window-area">
-							<OptionsWindow key={"success"+this.props.tileId} handleSubmit={this.handleSuccessSubmit} type="success"/>
-						<OptionsWindow key={"fail"+this.props.tileId} handleSubmit={this.handleFailSubmit} type="fail"/>
-						{this.buildTimeSelector()}
-						</div>
+						
+						<OptionsWindow key={"success"+this.props.tileId} handleSubmit={this.handleSuccessSubmit}
+						 getPreviousExecution={this.getPreviousEventExecution}
+						 type="success"/>
+						<OptionsWindow key={"fail"+this.props.tileId} handleSubmit={this.handleFailSubmit} 
+						getPreviousExecution={this.getPreviousEventExecution}
+						type="fail"/>
+						{/*this.buildTimeSelector()*/}
+						
 							
 						</div>	
 					</div>
-					<div style={{display:"none"}}>
-						
-						<OptionsWindow key={"success"+this.props.tileId} handleSubmit={this.handleSuccessSubmit} type="success"/>
-						<OptionsWindow key={"fail"+this.props.tileId} handleSubmit={this.handleFailSubmit} type="fail"/>
-						</div>
+					
 				</li>
 		)
 	}
@@ -586,13 +616,14 @@ var Event = React.createClass({
 var Recorder = React.createClass({
 	getInitialState() {
 		return {
-        recording: false,
+        recording: false,		
         singleAllowed: true,
         doubleAllowed: true,
         tiltAllowed: true,
         events: [],
 		execs: [],
-		executing:false      
+		executing:false,
+		currIndex:0  
     }
 	},
 
@@ -601,16 +632,25 @@ var Recorder = React.createClass({
 	},
 	renderEvents(){
       return this.state.events.map((event, index) => (
-		  <Event key={index} propKey={index} tileId={event.tileId} tileName={event.name} eventType={event.type} updateEvent={this.updateEvent} status={event.status} />
+		  <Event key={index} propKey={index} tileId={event.tileId} tileName={event.name} eventType={event.type} 
+		  		 updateEvent={this.updateEvent} 
+				 deleteEvent={this.deleteEvent} 
+				 status={event.status}
+				 getPreviousEvent={this.getPreviousEvent} />
         
       ));
   },
   renderExecs(){
-			return this.state.execs.map((exec, index) => (
-        <Executor eventList={this.state.events} key={index} name={exec.name} sendResultSignal={this.setEventStatus} resetEventStatuses={this.resetEventStatuses} active={this.state.executing} stopExecuting={this.stopExecuting}/>
-      ));
+			return (
+        <Executor eventList={this.state.events} 
+				  sendResultSignal={this.setEventStatus} 
+				  resetEventStatuses={this.resetEventStatuses} 
+				  executing={this.state.executing} 
+				  stopExecuting={this.stopExecuting} 
+				  currIndex={this.state.currIndex} />
+      );
   },
-  setSingleFilter(){   
+setSingleFilter(){   
     this.setState({singleAllowed: !this.state.singleAllowed});
 },
 setDoubleFilter(){
@@ -624,20 +664,15 @@ this.state.recording ? this.setState({recording:false}) : this.setState({recordi
 },
 stopExecuting(){
 	
-	this.setState({executing:false});
+	this.setState({executing:false, currIndex:0});
 },
 finishRecording(){
 	this.resetEventStatuses();
-	if(!this.state.execs.length){
-	this.setState({execs: this.state.execs.concat({name:"test"}), recording:false, executing:true});
-	
-}
-else{
-	this.setState({ recording:false, executing:true});
-}
+	this.setState({recording:false, executing:true});
 
 },
 receiveEvent(msg){
+	
     console.log(msg);
 	var tileEvent = msg.event;
 	var tileId = msg.tileId;
@@ -666,15 +701,31 @@ this.setState({events:this.state.events});
 },
 setEventStatus(index,status){
 this.state.events[index].status = status;
-this.setState({events:this.state.events});
+if(status === "success") this.state.currIndex++;
+this.setState({events:this.state.events, currIndex:this.state.currIndex});
 },
+
 resetEventStatuses(){
-for(var i =0; i<this.state.events.length;i++){
-	if(this.state.events[i].status){
-		this.state.events[i].status = null;
+	for(var i =0; i<this.state.events.length;i++){
+		if(this.state.events[i].status){
+			this.state.events[i].status = null;
+		}
 	}
+	this.setState({events:this.state.events, currIndex:0, executing:false});
+},
+deleteEvent(index){
+
+console.log("current index (delete check): "+this.state.currIndex+" index to be deleted"+index)
+if(index  <  this.state.currIndex || index === this.state.events.length-1){
+this.state.currIndex--;
 }
-this.setState({events:this.state.events});
+var result = this.state.events; //saving events here because you typically don't want to edit state like this directly
+result.splice(index,1);
+this.setState({events:result, currIndex:this.state.currIndex});
+},
+getPreviousEvent(index){
+	
+ return this.state.events[index-1];
 },
 	render(){
       return (
@@ -686,21 +737,29 @@ this.setState({events:this.state.events});
 				<div className="equalHWrap eqWrap">
 					<div className="equalHW eq">
 						<div className="filter-container">
-							<input  type="checkbox" onChange={this.setSingleFilter.bind(this)} defaultChecked="checked"> Single tap</input>
-							<input  type="checkbox" onChange={this.setDoubleFilter.bind(this)} defaultChecked="checked"  /> Double tap
-							<input  type="checkbox" onChange={this.setTiltFilter.bind(this)} defaultChecked="checked"  /> Tilt
+							<input  type="checkbox" onChange={this.setSingleFilter} defaultChecked="checked"> Single tap</input>
+							<input  type="checkbox" onChange={this.setDoubleFilter} defaultChecked="checked"  /> Double tap
+							<input  type="checkbox" onChange={this.setTiltFilter} defaultChecked="checked"  /> Tilt
 				        </div>
 					</div>
 					<div className="equalHW eq">
-						{this.state.executing === false ? <div type="button" onClick={this.startRecording.bind(this)} value="Record" className={"record "+(this.state.recording ? "active":"")} > </div>   :
+						{this.state.executing === false ? <div type="button" onClick={this.startRecording} value="Record" className={"record "+(this.state.recording ? "active":"")} > </div>   :
 						<div type="button" value="Record" className="record dark" > </div> 
 						}
 							
 					</div>
 					<div className="equalHW eq">
-						<input type="button" onClick={this.finishRecording.bind(this)} value="Finish" />
-						<div className="exec-area">
-					{this.renderExecs()}
+						<div className="exec-buttons">
+						
+							{!this.state.executing &&
+						<div className="activate-btn" onClick={this.finishRecording} value="Finish" >Activate</div>
+						}
+						<div className={this.props.executing ? "hidden" : ""}>
+							
+							{this.renderExecs()}
+						</div>
+						
+						
 			</div>
 					</div>
 				</div>  
@@ -710,7 +769,7 @@ this.setState({events:this.state.events});
 						{this.renderEvents()}
 					</ul>
 					
-					{this.state.recording && <div>we cording y'all</div>}
+					
 			</div>
 			
       </div>
