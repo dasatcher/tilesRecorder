@@ -44,43 +44,6 @@ li {
   box-shadow: 0px 0px 9px 1px #00BFFF;
 }
 
-.btn-success {
-  background: #32cf73;
-  -webkit-border-radius: 28;
-  -moz-border-radius: 28;
-  border-radius: 28px;
-  font-family: Arial;
-  color: #ffffff;
-  font-size: 15px;
-  padding: 5px 20px 5px 20px;
-  text-decoration: none;
-  width: 180px;
-  margin-bottom: 10px;
-}
-
-.btn-success:hover {
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.btn-fail {
-  background: #eb446e;
-  -webkit-border-radius: 28;
-  -moz-border-radius: 28;
-  border-radius: 28px;
-  font-family: Arial;
-  color: #ffffff;
-  font-size: 15px;
-  padding: 5px 20px 5px 20px;
-  text-decoration: none;
-  width: 180px;
-}
-
-.btn-fail:hover {
-  text-decoration: none;
-  cursor: pointer;
-}
-
 .name-area {
   color: white;
   word-wrap: break-word;
@@ -91,13 +54,14 @@ li {
 
 .button-flex {
   margin-left: -40%;
+  margin-top:12px;
   text-align: left;
   visibility: visible;
   opacity: 1;
   transition: visibility 0s, opacity 0.2s linear;
 }
 
-.equalHWrap:hover > .button-flex {
+.equalHWrap:hover > .button-flex > div > .editing-buttons{
   visibility: visible;
   opacity: 1;
 }

@@ -3,10 +3,10 @@ var TilesClient = require('./tiles-client.js');
 var http = require('http');
 
 var userTiles = [];
+ 
+ 
 
 //get all tiles
-//http://138.68.144.206:3000/users/TestUser/tiles
-
  http.get('http://138.68.144.206:3000/users/TestUser/tiles', function(res) {
     
 
@@ -30,7 +30,7 @@ var userTiles = [];
     });
 
   }).on('error', function(e) {
-    console.log('Got error: ${e.message}');
+    console.log('Got error: '+e.error);
   });
 
 // export function for listening to the socket
@@ -54,6 +54,7 @@ socket.emit('init', userTiles);
 
    tilesClient.send(msg.tileId, msg.cmdString,msg.param1,msg.param2);
   });
+  
 
 
 };

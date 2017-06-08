@@ -6,12 +6,7 @@ body{
 .material-icons {
     text-rendering: optimizeLegibility;
 }
-.success-form{
-	border: 1px solid green;
-}
-.fail-form{
-	border: 1px solid red;
-}
+
 ul {
   text-align: center;
 }
@@ -92,9 +87,6 @@ ul {
   
   box-shadow: 0 0 1px 5px #FFF;
 }
-
-
-
 .record-area{
   border:1px solid #b5b5b5;
   position:fixed;
@@ -114,7 +106,6 @@ ul {
 	text-align:center;
 	color:white;
 }
-
 
 .rec-node{
 	padding-top:105px;
@@ -148,4 +139,5 @@ ul {
 .material-icons{
   cursor:pointer;
   margin-top:-2px;
+  vertical-align: middle;
 }

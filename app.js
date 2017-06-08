@@ -11,7 +11,6 @@ var socket = require('./routes/socket.js');
 
 var app = express();
 var server = http.createServer(app);
-const meg = "meg";
 
 /* Configuration */
 app.set('views', __dirname + '/views');

@@ -47,8 +47,7 @@ form{
 }
 
 .icon-container .img-container{
-  opacity:0.5;
-  
+  opacity:0.5;  
 }
 
 .color-container .color-circle{
@@ -90,10 +89,12 @@ form{
 
 .success{
   background-color:#32cf73;
+  border-color:lightgreen;
 }
 
 .fail{
   background-color:#eb446e;
+  border-color: #ff7979;
 }
 .closed{
   display: none;
@@ -101,21 +102,16 @@ form{
 .open{
   display: inherit;
 }
-.option-window-area{
-position:absolute;
-right:30%;
-margin-top:-50px;
-border: 1px solid transparent;
-border-radius: 8px;
-overflow: hidden;
 
-}
 .option-window{
   padding:10px;
-  
+  border-radius:5px;
   z-index:2;
   width:300px;
   text-align:center;
+  border-style: solid;
+  border-width: 5px;
+
 }
 .modal {
   max-height: calc(100% - 100px);
@@ -130,6 +126,9 @@ overflow: hidden;
   background-color:#1DA1F2;
 }
 
+.time{
+  background-color:#1DA1F2;
+}
 
 .material-icons.edit{
     margin-left:5px;
@@ -147,5 +146,22 @@ overflow: hidden;
 }
 .editing-buttons{
   display:inline-block;
-  float:left;
+  margin-bottom:5px;
+  color:white;
+  margin-right:5px;
+  visibility: hidden;
+  opacity: 0;
+}
+.editing-buttons i{
+  color:black;  
+}
+
+.modal-background {
+  background-color:rgba(0, 0, 0, 0.7);
+  position:fixed;
+  top:0;
+  left:0;
+  height:100%;
+  width:100%;
+  
 }

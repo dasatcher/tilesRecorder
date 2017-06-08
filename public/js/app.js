@@ -10,174 +10,6 @@ var userTiles = [];
 socket.on('init', function (data) {
 	userTiles = data;
 });
-
-var MessageForm = React.createClass({
-	displayName: 'MessageForm',
-
-	getInitialState: function getInitialState() {
-		return { text: '' };
-	},
-
-	handleSubmit: function handleSubmit(e) {
-		e.preventDefault();
-		var message = {
-			user: this.props.user,
-			text: this.state.text
-		};
-		this.props.onMessageSubmit(message);
-		this.setState({ text: '' });
-	},
-
-	changeHandler: function changeHandler(e) {
-		this.setState({ text: e.target.value });
-	},
-
-	render: function render() {
-		return React.createElement(
-			'div',
-			{ className: 'message_form' },
-			React.createElement(
-				'h3',
-				null,
-				'Write New Message'
-			),
-			React.createElement(
-				'form',
-				{ onSubmit: this.handleSubmit },
-				React.createElement('input', {
-					onChange: this.changeHandler,
-					value: this.state.text
-				})
-			)
-		);
-	}
-});
-
-var ChatApp = React.createClass({
-	displayName: 'ChatApp',
-
-	getInitialState: function getInitialState() {
-		return { users: [], messages: [], text: '' };
-	},
-
-	componentDidMount: function componentDidMount() {
-		socket.on('init', this._initialize);
-		socket.on('init2', this._printmsg);
-		socket.on('send:message', this._messageRecieve);
-		socket.on('user:join', this._userJoined);
-		socket.on('user:left', this._userLeft);
-		socket.on('change:name', this._userChangedName);
-	},
-	_printmsg: function _printmsg(msg) {
-		console.log("into print msg");
-		console.log(msg);
-	},
-
-	_initialize: function _initialize(data) {
-		var users = data.users;
-		var name = data.name;
-
-		this.setState({ users: users, user: name });
-	},
-
-	_messageRecieve: function _messageRecieve(message) {
-		var messages = this.state.messages;
-
-		console.log(message);
-		messages.push(message);
-		this.setState({ messages: messages });
-	},
-
-	_userJoined: function _userJoined(data) {
-		var _state = this.state;
-		var users = _state.users;
-		var messages = _state.messages;
-		var name = data.name;
-
-		users.push(name);
-		messages.push({
-			user: 'APPLICATION BOT',
-			text: name + ' Joined'
-		});
-		this.setState({ users: users, messages: messages });
-	},
-
-	_userLeft: function _userLeft(data) {
-		var _state2 = this.state;
-		var users = _state2.users;
-		var messages = _state2.messages;
-		var name = data.name;
-
-		var index = users.indexOf(name);
-		users.splice(index, 1);
-		messages.push({
-			user: 'APPLICATION BOT',
-			text: name + ' Left'
-		});
-		this.setState({ users: users, messages: messages });
-	},
-
-	_userChangedName: function _userChangedName(data) {
-		var oldName = data.oldName;
-		var newName = data.newName;
-		var _state3 = this.state;
-		var users = _state3.users;
-		var messages = _state3.messages;
-
-		var index = users.indexOf(oldName);
-		users.splice(index, 1, newName);
-		messages.push({
-			user: 'APPLICATION BOT',
-			text: 'Change Name : ' + oldName + ' ==> ' + newName
-		});
-		this.setState({ users: users, messages: messages });
-	},
-
-	handleMessageSubmit: function handleMessageSubmit(message) {
-		var messages = this.state.messages;
-
-		messages.push(message);
-		this.setState({ messages: messages });
-		socket.emit('send:message', message);
-	},
-
-	handleChangeName: function handleChangeName(newName) {
-		var _this = this;
-
-		var oldName = this.state.user;
-		socket.emit('change:name', { name: newName }, function (result) {
-			if (!result) {
-				return alert('There was an error changing your name');
-			}
-			var users = _this.state.users;
-
-			var index = users.indexOf(oldName);
-			users.splice(index, 1, newName);
-			_this.setState({ users: users, user: newName });
-		});
-	},
-
-	render: function render() {
-		return React.createElement(
-			'div',
-			null,
-			React.createElement(UsersList, {
-				users: this.state.users
-			}),
-			React.createElement(MessageList, {
-				messages: this.state.messages
-			}),
-			React.createElement(MessageForm, {
-				onMessageSubmit: this.handleMessageSubmit,
-				user: this.state.user
-			}),
-			React.createElement(ChangeNameForm, {
-				onChangeName: this.handleChangeName
-			})
-		);
-	}
-});
-
 var tileResponse = function tileResponse(tileId, cmdString, param1, param2) {
 	this.tileId = tileId;
 	this.cmdString = cmdString;
@@ -201,65 +33,44 @@ var Executor = React.createClass({
 	componentDidMount: function componentDidMount() {
 		execSoc.on('tileEvent', this.evaluate);
 	},
-	componentWillReceiveProps: function componentWillReceiveProps(nextProps) {
-		console.log("next props " + nextProps);
-		console.log("current props " + this.props);
-	},
 	evaluate: function evaluate(msg) {
-		console.log("in evaluate, here is curr index" + this.props.currIndex);
-		console.log("isExecuting (executor) " + this.props.executing);
 		var currIndex = this.props.currIndex;
 		if (this.props.executing === true) {
 			var tileEvent = msg.event;
+			tileEvent.type = this.props.normalizeEventType(tileEvent.properties);
 			var tileId = msg.tileId;
 			var eventReceived = moment().valueOf();
 			var currEvent = this.props.eventList[this.props.currIndex];
 
-			console.log("event tileId: " + tileId + " event type: " + tileEvent.properties[0]);
-			console.log("lastSuccessTime: " + this.state.lastSuccessTime + " eventReceived: " + eventReceived);
 			var success = false;
-			if (currEvent.tileId === tileId && currEvent.type === tileEvent.properties[0]) {
+			if (currEvent.tileId === tileId && currEvent.type === tileEvent.type) {
 				success = true;
 
-				console.log("event in event list matches event that came in");
 				if (currEvent.options.timeLimit && this.state.lastSuccessTime) {
-					console.log("inside time check");
-					console.log("time limite " + this.props.eventList[0].options.timeLimit);
-
 					if (currEvent.options.timeLimit < eventReceived - this.state.lastSuccessTime) {
-						console.log("time fail");
+
 						success = false;
 						if (currEvent.options.terminTime) this.terminate();
 					}
 				}
 			}
 			if (success) {
-				console.log("success");
+
 				this.props.sendResultSignal(this.props.currIndex, "success");
 				if (currEvent.options.executeSuccess) {
 					this.execute(currEvent.options.executeSuccess);
 				}
-
 				this.props.eventList.length !== this.props.currIndex ? this.setState({ lastSuccessTime: eventReceived }) : this.terminate();
-				/*	if(this.props.eventList.length !== this.props.currIndex){
-    			this.setState({lastSuccessTime: eventReceived });
-    	}
-    	else{
-    			this.props.resetEventStatuses();
-    			this.setState({lastSuccessTime:null}); //reset our executor
-    	}*/
 			} else {
-					if (currEvent.options.executeFail) {
-						this.execute(currEvent.options.executeFail);
-					}
-
-					this.props.sendResultSignal(this.props.currIndex, "fail");
+				if (currEvent.options.executeFail) {
+					this.execute(currEvent.options.executeFail);
 				}
+
+				this.props.sendResultSignal(this.props.currIndex, "fail");
+			}
 		}
 	},
 	execute: function execute(ex) {
-		console.log("sequence completed!");
-
 		ex.execute();
 	},
 	terminate: function terminate() {
@@ -289,19 +100,10 @@ var OptionsWindow = React.createClass({
 			editing: false
 		};
 	},
-	setResType: function setResType(e) {},
 	setParam1: function setParam1(e) {
-
-		console.log(event.target.value);
-		console.log(e.target.dataset.has2param);
-
 		e.target.dataset.has2param === "true" ? this.setState({ hasParam2: true, selectedParam1: e.target.value }) : this.setState({ hasParam2: false, selectedParam1: e.target.value });
 	},
 	setParam2: function setParam2(e) {
-
-		console.log(event.target.value);
-		console.log(e.target.dataset.has2param);
-
 		this.setState({ selectedParam2: e.target.value });
 	},
 	setDeviceSelect: function setDeviceSelect(e) {
@@ -318,12 +120,12 @@ var OptionsWindow = React.createClass({
 		this.setState({ selectedParam1: null, selectedParam2: null, deviceSelect: null, editing: false, param2: false });
 	},
 	buildTileNames: function buildTileNames() {
-		var _this2 = this;
+		var _this = this;
 
 		return userTiles.map(function (tile) {
 			return React.createElement(
 				'option',
-				{ value: tile.id, selected: _this2.state.selectedTileId === tile.id ? true : false },
+				{ value: tile.id, selected: _this.state.selectedTileId === tile.id ? true : false },
 				tile.name
 			);
 		});
@@ -338,7 +140,7 @@ var OptionsWindow = React.createClass({
 	},
 	copyFromPrevious: function copyFromPrevious() {
 		var previousExec = this.props.getPreviousExecution(this.props.type);
-		console.log(previousExec);
+
 		if (previousExec && previousExec !== "error") {
 
 			var param2 = previousExec.cmdString === "led" ? true : false;
@@ -348,21 +150,38 @@ var OptionsWindow = React.createClass({
 		}
 	},
 	buildDeviceSelect: function buildDeviceSelect() {
-		var _this3 = this;
+		var _this2 = this;
 
 		var devices = ["led", "haptic"];
 		return devices.map(function (device) {
 			return React.createElement(
 				'option',
-				{ value: device, selected: _this3.state.deviceSelect === device ? true : false },
+				{ value: device, selected: _this2.state.deviceSelect === device ? true : false },
 				device
 			);
 		});
 	},
 	buildLedCommands: function buildLedCommands() {
-		var _this4 = this;
+		var _this3 = this;
 
 		var commands = [{ cmd: "on", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405319/led_on_mlg5df.png", has2param: "true" }, { cmd: "off", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405794/led_off_jpq2xd.png", has2param: "false" }, { cmd: "blink", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405692/led_blink_b5qkhh.png", has2param: "true" }, { cmd: "fade", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405793/led_fade_ffxjvh.png", has2param: "true" }];
+		return commands.map(function (command) {
+			return React.createElement(
+				'label',
+				null,
+				React.createElement('input', { type: 'radio', name: 'task-icon', ref: command.cmd, value: command.cmd, 'data-has2param': command.has2param, checked: _this3.state.selectedParam1 === command.cmd ? true : false }),
+				React.createElement(
+					'div',
+					{ className: 'img-container' },
+					React.createElement('img', { className: 'img-icon', src: command.icon })
+				)
+			);
+		});
+	},
+	buildHapticCommands: function buildHapticCommands() {
+		var _this4 = this;
+
+		var commands = [{ cmd: "long", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png", has2param: "false" }, { cmd: "burst", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png", has2param: "false" }];
 		return commands.map(function (command) {
 			return React.createElement(
 				'label',
@@ -376,32 +195,15 @@ var OptionsWindow = React.createClass({
 			);
 		});
 	},
-	buildHapticCommands: function buildHapticCommands() {
-		var _this5 = this;
-
-		var commands = [{ cmd: "long", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png", has2param: "false" }, { cmd: "burst", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png", has2param: "false" }];
-		return commands.map(function (command) {
-			return React.createElement(
-				'label',
-				null,
-				React.createElement('input', { type: 'radio', name: 'task-icon', ref: command.cmd, value: command.cmd, 'data-has2param': command.has2param, checked: _this5.state.selectedParam1 === command.cmd ? true : false }),
-				React.createElement(
-					'div',
-					{ className: 'img-container' },
-					React.createElement('img', { className: 'img-icon', src: command.icon })
-				)
-			);
-		});
-	},
 	buildParam2: function buildParam2() {
-		var _this6 = this;
+		var _this5 = this;
 
 		var colors = ["white", "red", "blue", "green"];
 		return colors.map(function (color) {
 			return React.createElement(
 				'label',
 				null,
-				React.createElement('input', { type: 'radio', name: 'profile-color', ref: color, value: color, checked: _this6.state.selectedParam2 === color ? true : false }),
+				React.createElement('input', { type: 'radio', name: 'profile-color', ref: color, value: color, checked: _this5.state.selectedParam2 === color ? true : false }),
 				React.createElement('div', { className: 'color-circle', style: { backgroundColor: color } })
 			);
 		});
@@ -499,6 +301,11 @@ var OptionsWindow = React.createClass({
 			),
 			React.createElement(
 				'div',
+				{ className: "modal-background" + (this.state.editing ? " open" : " closed"), onClick: this.setEditing },
+				'me'
+			),
+			React.createElement(
+				'div',
 				{ className: "option-window modal " + (this.props.type === "success" ? " success" : " fail") + (this.state.editing ? " open" : " closed") },
 				React.createElement(
 					'div',
@@ -517,7 +324,7 @@ var OptionsWindow = React.createClass({
 				React.createElement(
 					'i',
 					{ className: 'material-icons edit', ref: 'editResponse', onClick: this.copyFromPrevious },
-					'mode_edit'
+					'content_copy'
 				),
 				this.state.editing && this.buildForm()
 			)
@@ -530,18 +337,19 @@ var Event = React.createClass({
 
 	getInitialState: function getInitialState() {
 		return {
-			options: { timeLimit: null,
+			options: {
+				timeLimit: null,
 				terminId: false,
 				terminTime: false,
 				executeSuccess: null,
-				executeFail: null },
-			minutes: false
-
+				executeFail: null
+			},
+			minutes: false,
+			timeEditing: false
 		};
 	},
 	renderTimeUnits: function renderTimeUnits() {
 		var days = [];
-
 		for (var i = 0; i <= 60; i++) {
 			days.push(React.createElement(
 				'option',
@@ -570,21 +378,20 @@ var Event = React.createClass({
 		e.preventDefault();
 
 		var value = e.target.timeSelector.value * 1000;
-		console.log(this.state.minutes);
+
 		if (this.state.minutes) value *= 60;
 		this.state.options.timeLimit = value;
-		console.log("time limit new value " + value);
+
 		this.props.updateEvent(this.props.propKey, this.state.options);
+		this.state.timeEditing = false;
 		this.setState(this.state);
 	},
 	handleSuccessSubmit: function handleSuccessSubmit(res) {
-
 		this.state.options.executeSuccess = res;
 		this.props.updateEvent(this.props.propKey, this.state.options);
 		this.setState(this.state);
 	},
 	handleFailSubmit: function handleFailSubmit(res) {
-
 		this.state.options.executeFail = res;
 		this.props.updateEvent(this.props.propKey, this.state.options);
 		this.setState(this.state);
@@ -592,7 +399,7 @@ var Event = React.createClass({
 	buildTimeSelector: function buildTimeSelector() {
 		return React.createElement(
 			'div',
-			{ className: 'option-window time' },
+			{ className: "option-window modal time" + (this.state.timeEditing ? " open" : " closed") },
 			React.createElement(
 				'form',
 				{ name: 'setTime', onSubmit: this.handleTimeSubmit },
@@ -638,15 +445,27 @@ var Event = React.createClass({
 	setDeviceSelectFail: function setDeviceSelectFail(e) {
 		this.setState({ deviceSelectFail: e.target.value });
 	},
+	formatType: function formatType() {
+		if (this.props.eventType === "tilt") {
+			return this.props.eventType;
+		} else if (this.props.eventType === "tapsingle") {
+			return "Single Tap";
+		} else {
+			return "Double Tap";
+		}
+	},
 	setInteractionClass: function setInteractionClass(type) {
-		if (type === "ta") {
+		if (type === "tapsingle") {
 			return "tap";
-		} else if (type === "doubleta") {
+		} else if (type === "tapdouble") {
 			return "double-tap";
 		} else {
 			return "tilt";
 		}
-	}, //{this.props.tileId}-{this.props.tileName}-{this.props.eventType}	
+	},
+	setEditing: function setEditing() {
+		this.setState({ timeEditing: !this.state.timeEditing });
+	},
 	checkStatus: function checkStatus() {
 		if (this.props.status === "success") {
 			return "connect-success";
@@ -688,8 +507,8 @@ var Event = React.createClass({
 					{ className: "equalHW eq connect " + this.checkStatus() },
 					React.createElement(
 						'div',
-						{ className: "node offset-left " + this.setInteractionClass() },
-						this.props.eventType
+						{ className: "node offset-left " + this.setInteractionClass(this.props.eventType) },
+						this.formatType()
 					)
 				),
 				React.createElement(
@@ -700,7 +519,27 @@ var Event = React.createClass({
 						type: 'success' }),
 					React.createElement(OptionsWindow, { key: "fail" + this.props.tileId, handleSubmit: this.handleFailSubmit,
 						getPreviousExecution: this.getPreviousEventExecution,
-						type: 'fail' })
+						type: 'fail' }),
+					React.createElement(
+						'div',
+						null,
+						React.createElement(
+							'div',
+							{ className: "editing-buttons " + (this.state.timeEditing ? "closed" : "open") },
+							React.createElement(
+								'i',
+								{ className: 'material-icons round time', onClick: this.setEditing },
+								'mode_edit'
+							),
+							' time window'
+						)
+					),
+					React.createElement(
+						'div',
+						{ className: "modal-background" + (this.state.timeEditing ? " open" : " closed"), onClick: this.setEditing },
+						'me'
+					),
+					this.buildTimeSelector()
 				)
 			)
 		);
@@ -727,14 +566,14 @@ var Recorder = React.createClass({
 		socket.on('tileEvent', this.receiveEvent);
 	},
 	renderEvents: function renderEvents() {
-		var _this7 = this;
+		var _this6 = this;
 
 		return this.state.events.map(function (event, index) {
 			return React.createElement(Event, { key: index, propKey: index, tileId: event.tileId, tileName: event.name, eventType: event.type,
-				updateEvent: _this7.updateEvent,
-				deleteEvent: _this7.deleteEvent,
+				updateEvent: _this6.updateEvent,
+				deleteEvent: _this6.deleteEvent,
 				status: event.status,
-				getPreviousEvent: _this7.getPreviousEvent });
+				getPreviousEvent: _this6.getPreviousEvent });
 		});
 	},
 	renderExecs: function renderExecs() {
@@ -743,7 +582,8 @@ var Recorder = React.createClass({
 			resetEventStatuses: this.resetEventStatuses,
 			executing: this.state.executing,
 			stopExecuting: this.stopExecuting,
-			currIndex: this.state.currIndex });
+			currIndex: this.state.currIndex,
+			normalizeEventType: this.normalizeEventType });
 	},
 	setSingleFilter: function setSingleFilter() {
 		this.setState({ singleAllowed: !this.state.singleAllowed });
@@ -765,27 +605,35 @@ var Recorder = React.createClass({
 		this.resetEventStatuses();
 		this.setState({ recording: false, executing: true });
 	},
+	normalizeEventType: function normalizeEventType(properties) {
+		if (properties[0] === "ta") {
+			return "tapsingle";
+		} else if (properties[0] === "doubleta") {
+			return "tapdouble";
+		} else {
+			return properties.length > 1 ? properties[0] + properties[1] : properties[0];
+		}
+	},
 	receiveEvent: function receiveEvent(msg) {
 
-		console.log(msg);
 		var tileEvent = msg.event;
 		var tileId = msg.tileId;
-		var eventType = tileEvent.properties[0] + tileEvent.properties[1];
+		tileEvent.type = this.normalizeEventType(tileEvent.properties);
 		if (this.state.recording) {
 			if (this.checkFilter(tileEvent)) this.addEvent(tileId, tileEvent);
 		}
 	},
 	checkFilter: function checkFilter(tileEvent) {
-		if (tileEvent.properties[0] === "ta" && this.state.singleAllowed || tileEvent.properties[0] === "doubleta" && this.state.doubleAllowed || tileEvent.properties[0] === "tilt" && this.state.tiltAllowed) {
+		if (tileEvent.type === "tapsingle" && this.state.singleAllowed || tileEvent.type === "tapdouble" && this.state.doubleAllowed || tileEvent.type === "tilt" && this.state.tiltAllowed) {
 			return true;
 		} else return false;
 	},
 	addEvent: function addEvent(tileId, event) {
-		console.log("event list before adding: " + this.state.events);
-		this.setState({ events: this.state.events.concat({ tileId: tileId, name: event.name, type: event.properties[0], options: { timeLimit: 0, terminId: false, terminTime: false, executeSuccess: null, executeFail: null } }) });
+
+		this.setState({ events: this.state.events.concat({ tileId: tileId, name: event.name, type: event.type, options: { timeLimit: 0, terminId: false, terminTime: false, executeSuccess: null, executeFail: null } }) });
 	},
 	updateEvent: function updateEvent(id, options) {
-		console.log("in update event. event to be updated is ID " + id + " with options " + options.executeSuccess);
+
 		this.state.events[id].options = options;
 		this.setState({ events: this.state.events });
 	},
@@ -805,7 +653,6 @@ var Recorder = React.createClass({
 	},
 	deleteEvent: function deleteEvent(index) {
 
-		console.log("current index (delete check): " + this.state.currIndex + " index to be deleted" + index);
 		if (index < this.state.currIndex || index === this.state.events.length - 1) {
 			this.state.currIndex--;
 		}
@@ -892,7 +739,6 @@ var Recorder = React.createClass({
 });
 
 React.render(React.createElement(Recorder, null), document.getElementById('app'));
-/*this.buildTimeSelector()*/
 
 },{"moment":2,"react":158}],2:[function(require,module,exports){
 //! moment.js
