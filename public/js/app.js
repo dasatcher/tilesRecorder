@@ -164,7 +164,7 @@ var OptionsWindow = React.createClass({
 	buildLedCommands: function buildLedCommands() {
 		var _this3 = this;
 
-		var commands = [{ cmd: "on", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405319/led_on_mlg5df.png", has2param: "true" }, { cmd: "off", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405794/led_off_jpq2xd.png", has2param: "false" }, { cmd: "blink", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405692/led_blink_b5qkhh.png", has2param: "true" }, { cmd: "fade", icon: "http://res.cloudinary.com/deeron/image/upload/v1495405793/led_fade_ffxjvh.png", has2param: "true" }];
+		var commands = [{ cmd: "on", icon: "http://localhost:3000/css/images/led_on.png", has2param: "true" }, { cmd: "off", icon: "http://localhost:3000/css/images/led_off.png", has2param: "false" }, { cmd: "blink", icon: "http://localhost:3000/css/images/led_blink.png", has2param: "true" }, { cmd: "fade", icon: "http://localhost:3000/css/images/led_fade.png", has2param: "true" }];
 		return commands.map(function (command) {
 			return React.createElement(
 				'label',
@@ -181,7 +181,7 @@ var OptionsWindow = React.createClass({
 	buildHapticCommands: function buildHapticCommands() {
 		var _this4 = this;
 
-		var commands = [{ cmd: "long", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_long_xusvag.png", has2param: "false" }, { cmd: "burst", icon: "http://res.cloudinary.com/deeron/image/upload/v1495406657/haptic_burst_eofhts.png", has2param: "false" }];
+		var commands = [{ cmd: "long", icon: "http://localhost:3000/css/images/haptic_long.png", has2param: "false" }, { cmd: "burst", icon: "http://localhost:3000/css/images/haptic_burst.png", has2param: "false" }];
 		return commands.map(function (command) {
 			return React.createElement(
 				'label',

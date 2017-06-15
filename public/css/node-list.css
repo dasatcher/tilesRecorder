@@ -21,7 +21,8 @@ li {
 }
 
 .tap {
-  background-image: url("http://res.cloudinary.com/deeron/image/upload/v1495300329/actions_pbvvwp.png");
+ /* background-image: url("http://res.cloudinary.com/deeron/image/upload/v1495300329/actions_pbvvwp.png");*/
+ background-image: url("http://localhost:3000/css/images/actions.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
