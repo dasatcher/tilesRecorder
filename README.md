@@ -1,5 +1,7 @@
+
+![]({{site.baseurl}}/introimg.png)
+
 # Tiles Recorder
-![]({{site.baseurl}}//introimg.png)
 Tiles Recorder is a web application that allows developers to create IoT programs using Tiles. This is accomplished by mixing tangible interaction with arduino-like IoT devices and a web interface.
 
 ![]({{site.baseurl}}//tilesRecorder.png)
