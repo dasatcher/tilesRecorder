@@ -7,7 +7,7 @@ Tiles Recorder is a web application that allows developers to create IoT program
 ![](tilesRecorder.png)
 
 
-## How to Install
+## How to Install and Run
 
 You'll need first install both NodeJS and NPM. After installing these two system dependencies and cloning the repository, you'll need to run two commands to install the project dependencies.
 
@@ -16,10 +16,15 @@ From the base directory of the project, run:
 npm -install
 
 This will install all dependencies for the application. Next, run:
-npm run start
+
+npm run build
+
+This will build the application into the public folder. Finally, run:
+
+npm start
 
 This will run the application on localhost:3000
 
-Note: Running the application requires Tiles squares as well as the Tiles gateway application.
+Note: Using the application requires Tiles squares as well as the Tiles gateway application.
 
 
